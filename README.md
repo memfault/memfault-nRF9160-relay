@@ -9,13 +9,15 @@ This example uses `v1.5.1` of the nRF SDK.
 
 ## Installing dependencies
 
+### nRF SDK and Zephyr
+
 Install the necessary system dependencies (this command should work as-is on Ubuntu):
 
 ```bash
 sudo apt install cmake python3 python3-pip python3-venv
 ```
 
-Clone the repository and submodules:
+Clone the repository:
 
 ```bash
 git clone https://github.com/memfault/memfault-nRF9160-relay.git
@@ -54,10 +56,26 @@ Add this to your environment so that the project builds for x86_64:
 export ZEPHYR_TOOLCHAIN_VARIANT=host
 ```
 
+### Zephyr QEMU networking setup
+
+Follow [the Zephyr instructions on networking with QEMU](https://docs.zephyrproject.org/1.14.0/guides/networking/qemu_setup.html#networking-internet).
+
 ## Compiling and running
 
 Once you've installed all the dependencies, run this in this repository's root:
 
 ```bash
 west build -b=qemu_x86_64 nrf/samples/nrf9160/udp -- -DCONF_FILE="../../../../prj_qemu_x86_64.conf"
+```
+
+Set up the UDP server:
+
+```bash
+python3 server
+```
+
+Follow the instructions in the QEMU networking section above. Then, run the QEMU device:
+
+```bash
+west build -t run
 ```
