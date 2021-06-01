@@ -65,7 +65,7 @@ Follow [the Zephyr instructions on networking with QEMU](https://docs.zephyrproj
 Once you've installed all the dependencies, run this in this repository's root:
 
 ```bash
-west build -b=qemu_x86_64 nrf/samples/nrf9160/udp -- -DCONF_FILE="../../../../prj_qemu_x86_64.conf"
+west build -b=qemu_x86_64 firmware
 ```
 
 Set up the UDP server:
