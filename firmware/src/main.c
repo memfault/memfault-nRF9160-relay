@@ -4,40 +4,47 @@
  * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
  */
 
-#include <zephyr.h>
 #include <stdio.h>
+#include <zephyr.h>
 #include <modem/lte_lc.h>
 #include <net/socket.h>
+
+#include "memfault/core/data_packetizer.h"
+#include "memfault/core/platform/device_info.h"
 
 #define UDP_IP_HEADER_SIZE 28
 
 static int client_fd;
 static struct sockaddr_storage host_addr;
-static struct k_delayed_work server_transmission_work;
+static struct k_delayed_work memfault_chunk_sender_work;
 
 K_SEM_DEFINE(lte_connected, 0, 1);
 
-static void server_transmission_work_fn(struct k_work *work) {
-  int err;
-  char buffer[CONFIG_UDP_DATA_UPLOAD_SIZE_BYTES] = {"\0"};
+static void memfault_chunk_sender_work_fn(struct k_work *work) {
+  uint8_t buffer[CONFIG_UDP_DATA_UPLOAD_SIZE_BYTES];
 
-  printk("Transmitting UDP/IP payload of %d bytes to the ",
-         CONFIG_UDP_DATA_UPLOAD_SIZE_BYTES + UDP_IP_HEADER_SIZE);
-  printk("IP address %s, port number %d\n", CONFIG_UDP_SERVER_ADDRESS_STATIC,
-         CONFIG_UDP_SERVER_PORT);
+  bool data_available = memfault_packetizer_get_chunk(buffer, CONFIG_UDP_DATA_UPLOAD_SIZE_BYTES);
+  if (data_available) {
+    int err;
 
-  err = send(client_fd, buffer, sizeof(buffer), 0);
-  if (err < 0) {
-    printk("Failed to transmit UDP packet, %d\n", errno);
-    return;
+    printk("Transmitting UDP/IP payload of %d bytes to the ",
+           CONFIG_UDP_DATA_UPLOAD_SIZE_BYTES + UDP_IP_HEADER_SIZE);
+    printk("IP address %s, port number %d\n", CONFIG_UDP_SERVER_ADDRESS_STATIC,
+           CONFIG_UDP_SERVER_PORT);
+
+    err = send(client_fd, buffer, sizeof(buffer), 0);
+    if (err < 0) {
+      printk("Failed to transmit UDP packet, %d\n", errno);
+    }
   }
 
-  k_delayed_work_submit(&server_transmission_work,
+  k_delayed_work_submit(&memfault_chunk_sender_work,
                         K_SECONDS(CONFIG_UDP_DATA_UPLOAD_FREQUENCY_SECONDS));
 }
 
-static void work_init(void) {
-  k_delayed_work_init(&server_transmission_work, server_transmission_work_fn);
+static void init_memfault_chunks_sender(void) {
+  k_delayed_work_init(&memfault_chunk_sender_work,
+                      memfault_chunk_sender_work_fn);
 }
 
 #if defined(CONFIG_NRF_MODEM_LIB)
@@ -195,7 +202,7 @@ void main(void) {
 
   printk("UDP sample has started\n");
 
-  work_init();
+  init_memfault_chunks_sender();
 
 #if defined(CONFIG_NRF_MODEM_LIB)
 
@@ -227,5 +234,21 @@ void main(void) {
     return;
   }
 
-  k_delayed_work_submit(&server_transmission_work, K_NO_WAIT);
+  k_delayed_work_submit(&memfault_chunk_sender_work, K_NO_WAIT);
+}
+
+// TODO: generate some trace events
+// https://docs.memfault.com/docs/embedded/nrf-connect-sdk-guide#generate-some-trace-events
+
+void memfault_platform_get_device_info(sMemfaultDeviceInfo *info) {
+  uint8_t device_id[32];
+  hwinfo_get_device_id(device_id, sizeof(device_id));
+
+  // platform specific version information
+  *info = (sMemfaultDeviceInfo){
+      .device_serial = device_id,
+      .software_type = "test_udp_client_fw",
+      .software_version = "0.0.0",
+      .hardware_version = "pvt",
+  };
 }

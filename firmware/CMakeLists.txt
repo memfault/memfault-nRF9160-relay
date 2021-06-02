@@ -13,4 +13,6 @@ project(udp)
 target_sources(app PRIVATE src/main.c)
 # NORDIC SDK APP END
 
+zephyr_include_directories(${ZEPHYR_BASE}/../modules/memfault-firmware-sdk/components/include)
+zephyr_include_directories(config)
 zephyr_include_directories(src)
