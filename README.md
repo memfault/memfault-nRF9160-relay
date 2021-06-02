@@ -38,6 +38,7 @@ Install nRF SDK dependencies:
 
 ```bash
 west init -m https://github.com/nrfconnect/sdk-nrf --mr v1.5.1
+west config manifest.path firmware
 west update
 west zephyr-export
 ```
