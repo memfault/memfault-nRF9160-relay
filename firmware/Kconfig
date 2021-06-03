@@ -4,6 +4,10 @@
 # SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
 #
 
+menu "Zephyr Kernel"
+source "Kconfig.zephyr"
+endmenu
+
 menu "Memfault UDP Sample Settings"
 
 config UDP_DATA_UPLOAD_SIZE_BYTES
@@ -22,20 +26,6 @@ config UDP_SERVER_PORT
 	int "UDP server port number"
 	default "2469"
 
-config UDP_PSM_ENABLE
-	bool "Enable LTE Power Saving Mode"
-	default y
-
-config UDP_EDRX_ENABLE
-	bool "Enable LTE enhanced Discontinuous Reception"
-
-config UDP_RAI_ENABLE
-	bool "Enable LTE Release Assistance Indication"
-
-endmenu
-
-menu "Zephyr Kernel"
-source "Kconfig.zephyr"
 endmenu
 
 module = MEMFAULT_SAMPLE

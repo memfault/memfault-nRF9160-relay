@@ -18,7 +18,7 @@
 
 #include <logging/log.h>
 
-LOG_MODULE_REGISTER(memfault_sample, CONFIG_MEMFAULT_SAMPLE_LOG_LEVEL);
+LOG_MODULE_REGISTER(memfault_sample_udp, CONFIG_MEMFAULT_SAMPLE_UDP_LOG_LEVEL);
 
 static K_SEM_DEFINE(lte_connected, 0, 1);
 
