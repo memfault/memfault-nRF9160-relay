@@ -8,6 +8,7 @@
 #include <zephyr.h>
 #include <modem/lte_lc.h>
 #include <net/socket.h>
+#include <drivers/hwinfo.h>
 
 #include "memfault/core/data_packetizer.h"
 #include "memfault/core/platform/device_info.h"

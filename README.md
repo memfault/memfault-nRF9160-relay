@@ -54,19 +54,16 @@ pip3 install -r bootloader/mcuboot/scripts/requirements.txt
 Add this to your environment so that the project builds for x86_64:
 
 ```bash
-export ZEPHYR_TOOLCHAIN_VARIANT=host
+export ZEPHYR_TOOLCHAIN_VARIANT=gnuarmemb
+export GNUARMEMB_TOOLCHAIN_PATH=~/.gnuarmemb
 ```
-
-### Zephyr QEMU networking setup
-
-Follow [the Zephyr instructions on networking with QEMU](https://docs.zephyrproject.org/1.14.0/guides/networking/qemu_setup.html#networking-internet).
 
 ## Compiling and running
 
 Once you've installed all the dependencies, run this in this repository's root:
 
 ```bash
-west build -b=qemu_x86_64 firmware
+west build -b=nrf9160dk_nrf9160 firmware
 ```
 
 Set up the UDP server:
