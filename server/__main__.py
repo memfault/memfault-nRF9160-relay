@@ -1,6 +1,6 @@
 import socket
 
-LOCAL_IP = "192.0.2.2"
+LOCAL_IP = "localhost"
 LOCAL_PORT = 20001
 BUFFER_SIZE = 38
 

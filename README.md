@@ -63,7 +63,7 @@ export GNUARMEMB_TOOLCHAIN_PATH=~/.gnuarmemb
 Once you've installed all the dependencies, run this in this repository's root:
 
 ```bash
-west build -b=nrf9160dk_nrf9160 firmware
+west build -b=nrf9160dk_nrf9160ns firmware
 ```
 
 Set up the UDP server:

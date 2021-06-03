@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020 Nordic Semiconductor
+# Copyright (c) 2021 Nordic Semiconductor
 #
 # SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
 #
@@ -7,12 +7,11 @@
 cmake_minimum_required(VERSION 3.13.1)
 
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
-project(udp)
+project(memfault_sample_udp)
 
 # NORDIC SDK APP START
 target_sources(app PRIVATE src/main.c)
 # NORDIC SDK APP END
 
-zephyr_include_directories(${ZEPHYR_BASE}/../modules/memfault-firmware-sdk/components/include)
-zephyr_include_directories(config)
 zephyr_include_directories(src)
+zephyr_include_directories(config)
