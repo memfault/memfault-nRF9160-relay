@@ -18,7 +18,7 @@
 
 #include <logging/log.h>
 
-LOG_MODULE_REGISTER(memfault_sample_udp, CONFIG_MEMFAULT_SAMPLE_UDP_LOG_LEVEL);
+LOG_MODULE_REGISTER(memfault_sample, CONFIG_MEMFAULT_SAMPLE_LOG_LEVEL);
 
 static K_SEM_DEFINE(lte_connected, 0, 1);
 
@@ -110,9 +110,10 @@ static struct k_delayed_work memfault_chunk_sender_work;
 
 static void memfault_chunk_sender_work_fn(struct k_work *work) {
   uint8_t buffer[CONFIG_UDP_DATA_UPLOAD_SIZE_BYTES];
+  size_t buffer_len = sizeof(buffer);
 
   bool data_available =
-      memfault_packetizer_get_chunk(buffer, CONFIG_UDP_DATA_UPLOAD_SIZE_BYTES);
+      memfault_packetizer_get_chunk(buffer, &buffer_len);
   if (data_available) {
     int err;
 
@@ -135,7 +136,6 @@ static void init_memfault_chunks_sender(void) {
   k_delayed_work_init(&memfault_chunk_sender_work,
                       memfault_chunk_sender_work_fn);
 }
-
 
 static void server_disconnect(void) { (void)close(client_fd); }
 
@@ -229,9 +229,8 @@ void main(void) {
   k_sem_take(&lte_connected, K_FOREVER);
 
   /* Retrieve the LTE time to connect metric. */
-  // These are crashing the device for now
-  // memfault_metrics_heartbeat_timer_read(
-  //    MEMFAULT_METRICS_KEY(lte_time_to_connect), &time_to_lte_connection);
+  memfault_metrics_heartbeat_timer_read(
+      MEMFAULT_METRICS_KEY(lte_time_to_connect), &time_to_lte_connection);
 
   LOG_INF("Connected to LTE network. Time to connect: %d ms",
           time_to_lte_connection);
@@ -256,4 +255,3 @@ void main(void) {
 
   k_delayed_work_submit(&memfault_chunk_sender_work, K_NO_WAIT);
 }
-
