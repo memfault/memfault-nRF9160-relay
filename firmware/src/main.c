@@ -109,12 +109,11 @@ static struct sockaddr_storage host_addr;
 static struct k_delayed_work memfault_chunk_sender_work;
 
 static void memfault_chunk_sender_work_fn(struct k_work *work) {
-  uint8_t buffer[CONFIG_UDP_DATA_UPLOAD_SIZE_BYTES];
+  static uint8_t buffer[CONFIG_UDP_DATA_UPLOAD_SIZE_BYTES];
   size_t buffer_len = sizeof(buffer);
+  const bool success = memfault_packetizer_get_chunk(buffer, &buffer_len);
 
-  bool data_available =
-      memfault_packetizer_get_chunk(buffer, &buffer_len);
-  if (data_available) {
+  if (success && (buffer_len > 0)) { // under-documented edge-case: success but no data
     int err;
 
     printk("Transmitting UDP/IP payload of %d bytes to the ",
