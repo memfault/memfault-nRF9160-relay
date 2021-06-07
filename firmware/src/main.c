@@ -11,6 +11,7 @@
 #include <modem/lte_lc.h>
 #include <net/socket.h>
 
+#include "memfault/core/platform/device_info.h"
 #include <memfault/core/data_packetizer.h>
 #include <memfault/core/trace_event.h>
 #include <memfault/metrics/metrics.h>
@@ -108,20 +109,63 @@ static int client_fd;
 static struct sockaddr_storage host_addr;
 static struct k_delayed_work memfault_chunk_sender_work;
 
-static void memfault_chunk_sender_work_fn(struct k_work *work) {
-  static uint8_t buffer[CONFIG_UDP_DATA_UPLOAD_SIZE_BYTES];
-  size_t buffer_len = sizeof(buffer);
-  const bool success = memfault_packetizer_get_chunk(buffer, &buffer_len);
+static uint8_t udp_message[CONFIG_UDP_DATA_UPLOAD_SIZE_BYTES];
 
-  if (success && (buffer_len > 0)) { // under-documented edge-case: success but no data
+typedef struct UdpMessageChunkSection {
+  uint8_t *start_addr;
+  size_t size;
+} sUdpMessageChunkSection;
+
+static sUdpMessageChunkSection udp_message_chunk_section;
+
+#define NUMBER_OF_SECTIONS 3
+static void init_udp_message(void) {
+  sMemfaultDeviceInfo device_info;
+  memfault_platform_get_device_info(&device_info);
+
+  size_t remaining_bytes = CONFIG_UDP_DATA_UPLOAD_SIZE_BYTES;
+  uint8_t *cursor = udp_message;
+
+  size_t section_size = sizeof(CONFIG_UDP_DATA_UPLOAD_VERSION_PREFIX);
+  strncpy(cursor, CONFIG_UDP_DATA_UPLOAD_VERSION_PREFIX, remaining_bytes);
+  remaining_bytes -= section_size;
+  cursor += section_size;
+
+  section_size = sizeof(CONFIG_MEMFAULT_NCS_PROJECT_KEY);
+  strncpy(cursor, CONFIG_MEMFAULT_NCS_PROJECT_KEY, remaining_bytes);
+  remaining_bytes -= section_size;
+  cursor += section_size;
+
+  section_size = strlen((char *)device_info.device_serial) + 1;
+  strncpy(cursor, device_info.device_serial, remaining_bytes);
+  remaining_bytes -= section_size;
+  cursor += section_size;
+
+  LOG_DBG("Successfully initialized udp message buffer");
+
+  udp_message_chunk_section = (sUdpMessageChunkSection){
+      .size = remaining_bytes,
+      .start_addr = (uint8_t *)cursor,
+  };
+}
+
+static void memfault_chunk_sender_work_fn(struct k_work *work) {
+  size_t chunk_buffer_len = udp_message_chunk_section.size;
+  size_t size_of_prelude = CONFIG_UDP_DATA_UPLOAD_SIZE_BYTES - chunk_buffer_len;
+  const bool success = memfault_packetizer_get_chunk(
+      udp_message_chunk_section.start_addr, &chunk_buffer_len);
+
+  // under-documented edge-case: success but no data
+  if (success && (chunk_buffer_len > 0)) {
     int err;
+    size_t udp_message_size = size_of_prelude + chunk_buffer_len;
 
     printk("Transmitting UDP/IP payload of %d bytes to the ",
-           CONFIG_UDP_DATA_UPLOAD_SIZE_BYTES + UDP_IP_HEADER_SIZE);
+           udp_message_size + UDP_IP_HEADER_SIZE);
     printk("IP address %s, port number %d\n", CONFIG_UDP_SERVER_ADDRESS_STATIC,
            CONFIG_UDP_SERVER_PORT);
 
-    err = send(client_fd, buffer, sizeof(buffer), 0);
+    err = send(client_fd, udp_message, udp_message_size, 0);
     if (err < 0) {
       printk("Failed to transmit UDP packet, %d\n", errno);
     }
@@ -250,6 +294,7 @@ void main(void) {
     return;
   }
 
+  init_udp_message();
   init_memfault_chunks_sender();
 
   k_delayed_work_submit(&memfault_chunk_sender_work, K_NO_WAIT);

@@ -26,6 +26,10 @@ config UDP_SERVER_PORT
 	int "UDP server port number"
 	default "2469"
 
+config UDP_DATA_UPLOAD_VERSION_PREFIX
+	string "A version prefix to identify the binary layout of UDP messages"
+	default "v0"
+
 endmenu
 
 module = MEMFAULT_SAMPLE
