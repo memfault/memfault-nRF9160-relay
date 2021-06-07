@@ -94,16 +94,6 @@ static void modem_configure(void) {
 #endif
 }
 
-/* Recursive Fibonacci calculation used to trigger stack overflow. */
-static int fib(int n) {
-  if (n <= 1) {
-    return n;
-  }
-
-  return fib(n - 1) + fib(n - 2);
-}
-
-#define UDP_IP_HEADER_SIZE 28
 
 static int client_fd;
 static struct sockaddr_storage host_addr;
@@ -149,6 +139,8 @@ static void init_udp_message(void) {
   };
 }
 
+#define UDP_IP_HEADER_SIZE 28
+
 static void memfault_chunk_sender_work_fn(struct k_work *work) {
   size_t chunk_buffer_len = udp_message_chunk_section.size;
   size_t size_of_prelude = CONFIG_UDP_DATA_UPLOAD_SIZE_BYTES - chunk_buffer_len;
@@ -169,7 +161,10 @@ static void memfault_chunk_sender_work_fn(struct k_work *work) {
     if (err < 0) {
       printk("Failed to transmit UDP packet, %d\n", errno);
     }
+  } else {
+    printk("No Memfault chunks to upload!\n");
   }
+
 
   k_delayed_work_submit(&memfault_chunk_sender_work,
                         K_SECONDS(CONFIG_UDP_DATA_UPLOAD_FREQUENCY_SECONDS));
@@ -199,59 +194,19 @@ static int server_connect(void) {
   client_fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
   if (client_fd < 0) {
     printk("Failed to create UDP socket: %d\n", errno);
-    goto error;
+    server_disconnect();
+    return err;
   }
 
   err = connect(client_fd, (struct sockaddr *)&host_addr,
                 sizeof(struct sockaddr_in));
   if (err < 0) {
-    printk("Connect failed : %d\n", errno);
-    goto error;
+    printk("Failed to connect: %d\n", errno);
+    server_disconnect();
+    return err;
   }
 
   return 0;
-
-error:
-  server_disconnect();
-
-  return err;
-}
-
-/* Handle button presses and trigger faults that can be captured and sent to
- * the Memfault cloud for inspection after rebooting:
- * Only button 1 is available on Thingy:91, the rest are available on nRF9160
- *DK. Button 1: Trigger stack overflow. Button 2: Trigger NULL-pointer
- *dereference. Switch 1: Increment switch_1_toggle_count metric by one. Switch
- *2: Trace switch_2_toggled event, along with switch state.
- */
-static void button_handler(uint32_t button_states, uint32_t has_changed) {
-  uint32_t buttons_pressed = has_changed & button_states;
-
-  if (buttons_pressed & DK_BTN1_MSK) {
-    LOG_WRN("Stack overflow will now be triggered");
-    fib(10000);
-  } else if (buttons_pressed & DK_BTN2_MSK) {
-    uint32_t *ptr = NULL;
-    volatile uint32_t i = *ptr;
-
-    LOG_WRN("NULL pointer de-reference will now be triggered");
-
-    (void)i;
-  } else if (has_changed & DK_BTN3_MSK) {
-    /* DK_BTN3_MSK is Switch 1 on nRF9160 DK. */
-    int err = memfault_metrics_heartbeat_add(
-        MEMFAULT_METRICS_KEY(switch_1_toggle_count), 1);
-
-    if (err) {
-      LOG_ERR("Failed to increment switch_1_toggle_count");
-    } else {
-      LOG_INF("switch_1_toggle_count incremented");
-    }
-  } else if (has_changed & DK_BTN4_MSK) {
-    /* DK_BTN4_MSK is Switch 2 on nRF9160 DK. */
-    MEMFAULT_TRACE_EVENT_WITH_LOG(switch_2_toggled, "Switch state: %d",
-                                  buttons_pressed & DK_BTN4_MSK ? 1 : 0);
-  }
 }
 
 void main(void) {
@@ -261,12 +216,6 @@ void main(void) {
   printk("Memfault over UDP sample has started\n");
 
   modem_configure();
-
-  err = dk_buttons_init(button_handler);
-  if (err) {
-    LOG_ERR("dk_buttons_init, error: %d", err);
-  }
-
   LOG_INF("Connecting to LTE network, this may take several minutes...");
 
   k_sem_take(&lte_connected, K_FOREVER);
@@ -277,25 +226,23 @@ void main(void) {
 
   LOG_INF("Connected to LTE network. Time to connect: %d ms",
           time_to_lte_connection);
-  LOG_INF("Sending already captured data to Memfault");
 
   /* Trigger collection of heartbeat data. */
   memfault_metrics_heartbeat_debug_trigger();
 
   err = server_init();
   if (err) {
-    printk("Not able to initialize UDP server connection\n");
+    printk("Failed to initialize UDP server connection\n");
     return;
   }
 
   err = server_connect();
   if (err) {
-    printk("Not able to connect to UDP server\n");
+    printk("Failed to connect to UDP server\n");
     return;
   }
 
   init_udp_message();
   init_memfault_chunks_sender();
-
   k_delayed_work_submit(&memfault_chunk_sender_work, K_NO_WAIT);
 }
