@@ -8,7 +8,6 @@
 #include <zephyr.h>
 
 #include <dk_buttons_and_leds.h>
-#include <modem/lte_lc.h>
 #include <net/socket.h>
 
 #include "memfault/core/platform/device_info.h"
@@ -20,80 +19,6 @@
 #include <logging/log.h>
 
 LOG_MODULE_REGISTER(memfault_sample, CONFIG_MEMFAULT_SAMPLE_LOG_LEVEL);
-
-static K_SEM_DEFINE(lte_connected, 0, 1);
-
-static void lte_handler(const struct lte_lc_evt *const evt) {
-  switch (evt->type) {
-  case LTE_LC_EVT_NW_REG_STATUS:
-    if ((evt->nw_reg_status != LTE_LC_NW_REG_REGISTERED_HOME) &&
-        (evt->nw_reg_status != LTE_LC_NW_REG_REGISTERED_ROAMING)) {
-      break;
-    }
-
-    LOG_INF("Network registration status: %s",
-            evt->nw_reg_status == LTE_LC_NW_REG_REGISTERED_HOME
-                ? "Connected - home network"
-                : "Connected - roaming");
-
-    k_sem_give(&lte_connected);
-    break;
-  case LTE_LC_EVT_PSM_UPDATE:
-    LOG_DBG("PSM parameter update: TAU: %d, Active time: %d", evt->psm_cfg.tau,
-            evt->psm_cfg.active_time);
-    break;
-  case LTE_LC_EVT_EDRX_UPDATE: {
-    char log_buf[60];
-    ssize_t len;
-
-    len = snprintf(log_buf, sizeof(log_buf),
-                   "eDRX parameter update: eDRX: %f, PTW: %f",
-                   evt->edrx_cfg.edrx, evt->edrx_cfg.ptw);
-    if (len > 0) {
-      LOG_DBG("%s", log_strdup(log_buf));
-    }
-    break;
-  }
-  case LTE_LC_EVT_RRC_UPDATE:
-    LOG_DBG("RRC mode: %s",
-            evt->rrc_mode == LTE_LC_RRC_MODE_CONNECTED ? "Connected" : "Idle");
-    break;
-  case LTE_LC_EVT_CELL_UPDATE:
-    LOG_DBG("LTE cell changed: Cell ID: %d, Tracking area: %d", evt->cell.id,
-            evt->cell.tac);
-    break;
-  case LTE_LC_EVT_LTE_MODE_UPDATE:
-    LOG_INF("Active LTE mode changed: %s",
-            evt->lte_mode == LTE_LC_LTE_MODE_NONE    ? "None"
-            : evt->lte_mode == LTE_LC_LTE_MODE_LTEM  ? "LTE-M"
-            : evt->lte_mode == LTE_LC_LTE_MODE_NBIOT ? "NB-IoT"
-                                                     : "Unknown");
-    break;
-  default:
-    break;
-  }
-}
-
-static void modem_configure(void) {
-#if defined(CONFIG_NRF_MODEM_LIB)
-  if (IS_ENABLED(CONFIG_LTE_AUTO_INIT_AND_CONNECT)) {
-    /* Do nothing, modem is already configured and LTE connected. */
-  } else {
-    int err;
-
-    err = lte_lc_init_and_connect_async(lte_handler);
-    if (err) {
-      LOG_ERR("Modem could not be configured, error: %d", err);
-      return;
-    }
-
-    /* Check LTE events of type LTE_LC_EVT_NW_REG_STATUS in
-     * lte_handler() to determine when the LTE link is up.
-     */
-  }
-#endif
-}
-
 
 static int client_fd;
 static struct sockaddr_storage host_addr;
@@ -167,14 +92,13 @@ static void memfault_chunk_sender_work_fn(struct k_work *work) {
     printk("No Memfault chunks to upload!\n");
   }
 
-
   k_work_schedule(&memfault_chunk_sender_work,
-                        K_SECONDS(CONFIG_UDP_DATA_UPLOAD_FREQUENCY_SECONDS));
+                  K_SECONDS(CONFIG_UDP_DATA_UPLOAD_FREQUENCY_SECONDS));
 }
 
 static void init_memfault_chunks_sender(void) {
   k_work_init_delayable(&memfault_chunk_sender_work,
-                      memfault_chunk_sender_work_fn);
+                        memfault_chunk_sender_work_fn);
 }
 
 static void server_disconnect(void) { (void)close(client_fd); }
@@ -213,20 +137,8 @@ static int server_connect(void) {
 
 void main(void) {
   int err;
-  uint32_t time_to_lte_connection;
 
   printk("Memfault over UDP sample has started\n");
-
-  modem_configure();
-  LOG_INF("Connecting to LTE network, this may take several minutes...");
-
-  k_sem_take(&lte_connected, K_FOREVER);
-
-  memfault_metrics_heartbeat_timer_read(
-      MEMFAULT_METRICS_KEY(Ncs_LteTimeToConnect), &time_to_lte_connection);
-
-  LOG_INF("Connected to LTE network. Time to connect: %d ms",
-          time_to_lte_connection);
 
   err = server_init();
   if (err) {
