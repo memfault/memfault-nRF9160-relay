@@ -97,7 +97,7 @@ static void modem_configure(void) {
 
 static int client_fd;
 static struct sockaddr_storage host_addr;
-static struct k_delayed_work memfault_chunk_sender_work;
+static struct k_work_delayable memfault_chunk_sender_work;
 
 static uint8_t udp_message[CONFIG_UDP_DATA_UPLOAD_SIZE_BYTES];
 
@@ -166,12 +166,12 @@ static void memfault_chunk_sender_work_fn(struct k_work *work) {
   }
 
 
-  k_delayed_work_submit(&memfault_chunk_sender_work,
+  k_work_schedule(&memfault_chunk_sender_work,
                         K_SECONDS(CONFIG_UDP_DATA_UPLOAD_FREQUENCY_SECONDS));
 }
 
 static void init_memfault_chunks_sender(void) {
-  k_delayed_work_init(&memfault_chunk_sender_work,
+  k_work_init_delayable(&memfault_chunk_sender_work,
                       memfault_chunk_sender_work_fn);
 }
 
@@ -222,7 +222,7 @@ void main(void) {
 
   /* Retrieve the LTE time to connect metric. */
   memfault_metrics_heartbeat_timer_read(
-      MEMFAULT_METRICS_KEY(lte_time_to_connect), &time_to_lte_connection);
+      MEMFAULT_METRICS_KEY(Ncs_LteTimeToConnect), &time_to_lte_connection);
 
   LOG_INF("Connected to LTE network. Time to connect: %d ms",
           time_to_lte_connection);
@@ -244,5 +244,5 @@ void main(void) {
 
   init_udp_message();
   init_memfault_chunks_sender();
-  k_delayed_work_submit(&memfault_chunk_sender_work, K_NO_WAIT);
+  k_work_schedule(&memfault_chunk_sender_work, K_NO_WAIT);
 }

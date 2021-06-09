@@ -37,7 +37,7 @@ All the steps starting from here mimic [Nordic's instructions](https://developer
 Install nRF SDK dependencies:
 
 ```bash
-west init -m https://github.com/nrfconnect/sdk-nrf --mr v1.5.1
+west init -m https://github.com/nrfconnect/sdk-nrf --mr jtguggedal:memfault-integration
 west config manifest.path firmware
 west update
 west zephyr-export
