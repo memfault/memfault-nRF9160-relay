@@ -5,7 +5,7 @@ Semiconductor](https://developer.nordicsemi.com/nRF_Connect_SDK/doc/latest/nrf/s
 It shows how a server that receives UDP packets might relay them to the
 [Memfault](https://memfault.com/) servers.
 
-This example uses `v1.5.1` of the nRF SDK.
+This example uses `v1.6.0-rc2` of the nRF SDK.
 
 ## Installing dependencies
 
@@ -37,7 +37,7 @@ All the steps starting from here mimic [Nordic's instructions](https://developer
 Install nRF SDK dependencies:
 
 ```bash
-west init -m https://github.com/nrfconnect/sdk-nrf --mr jtguggedal:memfault-integration
+west init -m https://github.com/nrfconnect/sdk-nrf --mr v1.6.0-rc2
 west config manifest.path firmware
 west update
 west zephyr-export
@@ -51,16 +51,16 @@ pip3 install -r nrf/scripts/requirements.txt
 pip3 install -r bootloader/mcuboot/scripts/requirements.txt
 ```
 
-Add this to your environment so that the project builds for x86_64:
-
-```bash
-export ZEPHYR_TOOLCHAIN_VARIANT=gnuarmemb
-export GNUARMEMB_TOOLCHAIN_PATH=~/.gnuarmemb
-```
-
 ## Compiling and running
 
-Once you've installed all the dependencies, run this in this repository's root:
+Once you've installed all the dependencies, make sure to set your Project Key and a static IP address to your UDP server in `firmware/prj.conf`:
+
+```
+CONFIG_UDP_SERVER_ADDRESS_STATIC="18.188.13.221"
+CONFIG_MEMFAULT_NCS_PROJECT_KEY="owTDJvKithvuHTNj47hwmzUOsQ2qEGbG"
+```
+
+Run this in this repository's root:
 
 ```bash
 west build -b=nrf9160dk_nrf9160ns firmware
@@ -72,8 +72,8 @@ Set up the UDP server:
 python3 server
 ```
 
-Follow the instructions in the QEMU networking section above. Then, run the QEMU device:
+Finally, flash the device:
 
 ```bash
-west build -t run
+west build -t flash
 ```

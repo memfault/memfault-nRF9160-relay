@@ -56,7 +56,7 @@ manifest:
     # https://developer.nordicsemi.com/nRF_Connect_SDK/doc/latest/zephyr/guides/modules.html
     - name: zephyr
       repo-path: sdk-zephyr
-      revision: 2541c598706e87d0475f650b9a27e89a701c58c6
+      revision: v2.6.0-rc1-ncs1-rc1
       import:
         # In addition to the zephyr repository itself, NCS also
         # imports the contents of zephyr/west.yml at the above
@@ -88,7 +88,6 @@ manifest:
           - nrf_hw_models
           - open-amp
           - segger
-          - tensorflow
           - tinycbor
           - tinycrypt
           - TraceRecorderSource
@@ -99,16 +98,17 @@ manifest:
     # changes.
     - name: mcuboot
       repo-path: sdk-mcuboot
-      revision: bbca448b64fc7e0e10122dab6909649068c22a0e
+      revision: v1.7.0-ncs1-rc1
       path: bootloader/mcuboot
     - name: nrfxlib
       repo-path: sdk-nrfxlib
       path: nrfxlib
-      revision: e47d05deb577d45c3c2ea9d53958073f4246123c
+      revision: d1a5b3613f1ea574a5ee7d43b277bbe28633f593
+
     - name: trusted-firmware-m
       repo-path: sdk-trusted-firmware-m
       path: modules/tee/tfm
-      revision: b9a9ba684026c9bab73ae7ddfb50daacc1138324
+      revision: v1.3.99-ncs1-rc1
     - name: tfm-mcuboot # This is used by the trusted-firmware-m module.
       repo-path: sdk-mcuboot
       path: modules/tee/tfm-mcuboot
@@ -116,11 +116,11 @@ manifest:
     - name: openthread
       repo-path: sdk-openthread
       path: modules/lib/openthread
-      revision: 9c01aff66245c3989536a8c96dae3c6ec6402d0d
+      revision: thread-reference-20200818-ncs1-rc1
     - name: matter
       repo-path: sdk-connectedhomeip
       path: modules/lib/matter
-      revision: dddca7629f68a040e97104a74387b66ca753d715
+      revision: e73ee78cfa6b8d57952a380eac43de6ba0bb27f9
       submodules:
         - name: nlio
           path: third_party/nlio/repo
@@ -134,6 +134,10 @@ manifest:
       revision: a147927cf8ed43831dc2d8003017be8306724d61
       groups:
       - nrf-802154
+    - name: cjson
+      repo-path: sdk-cjson
+      path: modules/lib/cjson
+      revision: 50bddddf7fb45e4ce87bc3619df06db55d181856
     # Other third-party repositories.
     - name: cmock
       path: test/cmock
@@ -146,7 +150,7 @@ manifest:
     - name: mbedtls-nrf
       path: mbedtls
       repo-path: mbedtls
-      revision: mbedtls-2.24.0
+      revision: mbedtls-2.26.0
       remote: armmbed
     - name: nanopb
       path: modules/lib/nanopb
@@ -166,17 +170,17 @@ manifest:
       path: modules/lib/cddl-gen
     - name: homekit
       repo-path: sdk-homekit
-      revision: 4b637f0f8cd0e9881c238d10b4121b3712c5ba0d
+      revision: ae8feb0c6fa9220304edc0708b52a2968350ea56
       groups:
       - homekit
     - name: find-my
       repo-path: sdk-find-my
-      revision: 07c8d591b47c4c3609f29871be031c9af39401e1
+      revision: 9c8305df8603374ec304ae46f6048f63ab8f9373
       groups:
       - find-my
     - name: memfault-firmware-sdk
       path: modules/lib/memfault-firmware-sdk
-      revision: 0.21.0
+      revision: 0.21.1
       remote: memfault
 
   # West-related configuration for the nrf repository.
