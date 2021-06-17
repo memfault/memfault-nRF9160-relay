@@ -24,48 +24,48 @@ static int client_fd;
 static struct sockaddr_storage host_addr;
 static struct k_work_delayable memfault_chunk_sender_work;
 
-static uint8_t udp_message[CONFIG_UDP_DATA_UPLOAD_SIZE_BYTES];
+static char udp_message[CONFIG_UDP_DATA_UPLOAD_SIZE_BYTES];
+char *udp_message_cursor = udp_message;
+int udp_message_remaining_bytes = CONFIG_UDP_DATA_UPLOAD_SIZE_BYTES;
 
 typedef struct UdpMessageChunkSection {
-  uint8_t *start_addr;
+  char *start_addr;
   size_t size;
 } sUdpMessageChunkSection;
 
 static sUdpMessageChunkSection udp_message_chunk_section;
 
-#define NUMBER_OF_SECTIONS 3
+static int append_to_udp_message(const char *section, int section_size) {
+  if (section_size > udp_message_remaining_bytes) {
+    LOG_DBG("Message too big, increase CONFIG_UDP_DATA_UPLOAD_SIZE_BYTES");
+    return 1;
+  }
+  strncpy(udp_message_cursor, section, udp_message_remaining_bytes);
+  udp_message_remaining_bytes -= section_size;
+  udp_message_cursor += section_size;
+  return 0;
+}
+
 static void init_udp_message(void) {
   sMemfaultDeviceInfo device_info;
   memfault_platform_get_device_info(&device_info);
 
-  size_t remaining_bytes = CONFIG_UDP_DATA_UPLOAD_SIZE_BYTES;
-  uint8_t *cursor = udp_message;
+  append_to_udp_message(CONFIG_UDP_DATA_UPLOAD_VERSION_PREFIX,
+                        sizeof(CONFIG_UDP_DATA_UPLOAD_VERSION_PREFIX));
+  append_to_udp_message(CONFIG_MEMFAULT_NCS_PROJECT_KEY,
+                        sizeof(CONFIG_MEMFAULT_NCS_PROJECT_KEY));
+  append_to_udp_message(device_info.device_serial,
+                        strlen((char *)device_info.device_serial) + 1);
 
-  size_t section_size = sizeof(CONFIG_UDP_DATA_UPLOAD_VERSION_PREFIX);
-  strncpy(cursor, CONFIG_UDP_DATA_UPLOAD_VERSION_PREFIX, remaining_bytes);
-  remaining_bytes -= section_size;
-  cursor += section_size;
-
-  section_size = sizeof(CONFIG_MEMFAULT_NCS_PROJECT_KEY);
-  strncpy(cursor, CONFIG_MEMFAULT_NCS_PROJECT_KEY, remaining_bytes);
-  remaining_bytes -= section_size;
-  cursor += section_size;
-
-  section_size = strlen((char *)device_info.device_serial) + 1;
-  strncpy(cursor, device_info.device_serial, remaining_bytes);
-  remaining_bytes -= section_size;
-  cursor += section_size;
-
-  LOG_DBG("Successfully initialized udp message buffer");
+  LOG_DBG("Finished initialization of UDP message buffer");
 
   udp_message_chunk_section = (sUdpMessageChunkSection){
-      .size = remaining_bytes,
-      .start_addr = (uint8_t *)cursor,
+      .size = udp_message_remaining_bytes,
+      .start_addr = udp_message_cursor,
   };
 }
 
 #define UDP_IP_HEADER_SIZE 28
-
 static void memfault_chunk_sender_work_fn(struct k_work *work) {
   memfault_metrics_heartbeat_debug_print();
 
