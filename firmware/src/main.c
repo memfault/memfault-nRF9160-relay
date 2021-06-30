@@ -67,8 +67,6 @@ static void init_udp_message(void) {
 
 #define UDP_IP_HEADER_SIZE 28
 static void memfault_chunk_sender_work_fn(struct k_work *work) {
-  memfault_metrics_heartbeat_debug_print();
-
   size_t chunk_buffer_len = udp_message_chunk_section.size;
   size_t size_of_prelude = CONFIG_UDP_DATA_UPLOAD_SIZE_BYTES - chunk_buffer_len;
   const bool success = memfault_packetizer_get_chunk(
